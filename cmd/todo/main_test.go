@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -97,6 +98,57 @@ func TestTodoCLI(t *testing.T) {
 		if expected != string(out) {
 			t.Errorf("expected %q, got %q instead\n", expected, string(out))
 		}
+		t.Cleanup(func() { os.Remove(fileName) })
+	})
+
+	t.Run("DeleteTask", func(t *testing.T) {
+		task1 := "list task 1"
+		cmd := exec.Command(cmdPath, "-add", task1)
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		task2 := "list task 2"
+		cmd = exec.Command(cmdPath, "-add", task2)
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		cmd = exec.Command(cmdPath, "-delete", "1")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !strings.Contains(string(out), task1+" was deleted.\n") {
+			t.Errorf(
+				"Expected task %q to be deleted\n%s",
+				task1, string(out))
+		}
+
+		t.Cleanup(func() { os.Remove(fileName) })
+	})
+
+	t.Run("DeleteInvalidTask", func(t *testing.T) {
+		task1 := "list task 1"
+		cmd := exec.Command(cmdPath, "-add", task1)
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		task2 := "list task 2"
+		cmd = exec.Command(cmdPath, "-add", task2)
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+
+		cmd = exec.Command(cmdPath, "-delete", "7")
+		out, _ := cmd.CombinedOutput()
+
+		if !strings.Contains(string(out), "Invalid task number") {
+			t.Errorf("Expected error message for invalid deletion, got:\n%s", string(out))
+		}
+
 		t.Cleanup(func() { os.Remove(fileName) })
 	})
 }

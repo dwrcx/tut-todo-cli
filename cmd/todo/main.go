@@ -16,6 +16,7 @@ func main() {
 	add := flag.Bool("add", false, "Add task to the todo list")
 	list := flag.Bool("list", false, "List all tasks")
 	complete := flag.Int("complete", 0, "Item to be completed")
+	del := flag.Int("delete", 0, "Item to be deleted")
 	flag.Parse()
 
 	if os.Getenv("TODO_FILENAME") != "" {
@@ -58,6 +59,26 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+
+	case *del > 0:
+		if *del > len(*l) || *del <= 0 {
+			fmt.Fprintln(os.Stderr, "Invalid task number")
+			os.Exit(1)
+		}
+
+		taskName := (*l)[*del-1].Task
+		if err := l.Delete(*del); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		if err := l.Save(todoFileName); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("%v was deleted.\n", taskName)
+		fmt.Println(l)
 
 	default:
 		fmt.Fprintln(os.Stderr, "Invalid option")
