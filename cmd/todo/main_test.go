@@ -1,6 +1,9 @@
-package main_test
+package main
 
 import (
+	"bytes"
+	"fmt"
+	todo "github.com/dwrcx/tut-todo-cli"
 	"io"
 	"os"
 	"os/exec"
@@ -8,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 var (
@@ -25,6 +29,20 @@ func runCLI(args ...string) (string, error) {
 	cmd := exec.Command(filepath.Join(dir, binName), args...)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+func captureOutput(f func()) string {
+	var buf bytes.Buffer
+	stdout := os.Stdout
+	defer func() { os.Stdout = stdout }()
+
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	f()
+	w.Close()
+
+	buf.ReadFrom(r)
+	return buf.String()
 }
 
 // ========== Helpers ========
@@ -143,5 +161,47 @@ func TestDeleteTask(t *testing.T) {
 
 	if output != expected {
 		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
+func TestPrintTasks(t *testing.T) {
+	tasks := todo.List{
+		{Task: "task A", Done: false},
+		{Task: "task B", Done: true},
+	}
+
+	exp := "  1: task A\nX 2: task B\n"
+
+	out := captureOutput(func() {
+		printTasks(tasks)
+	})
+
+	if out != exp {
+		t.Errorf("expected:\n%s\ngot:\n%s", exp, out)
+	}
+}
+
+func TestPrintTasksVerbose(t *testing.T) {
+	created := time.Date(2021, 2, 3, 4, 5, 0, 0, time.UTC)
+	completed := created.Add(2 * time.Hour)
+
+	tasks := todo.List{
+		{Task: "task A", Done: false, CreatedAt: created},
+		{Task: "task B", Done: true, CreatedAt: created, CompletedAt: completed},
+	}
+
+	exp := fmt.Sprintf(
+		"  1: %s %s task A\n"+
+			"X 2: %s %s task B\n",
+		created.Format("Mon 02/01"), created.Format("15:04"),
+		completed.Format("Mon 02/01"), completed.Format("15:04"),
+	)
+
+	out := captureOutput(func() {
+		printTasksVerbose(tasks)
+	})
+
+	if out != exp {
+		t.Errorf("expected:\n%s\ngot:\n%s", exp, out)
 	}
 }

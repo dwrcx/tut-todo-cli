@@ -15,6 +15,7 @@ var todoFileName = ".todo.json"
 func main() {
 	add := flag.Bool("add", false, "Add task to the todo list")
 	list := flag.Bool("list", false, "List all tasks")
+	verbose := flag.Bool("v", false, "Use with -list for verbose output")
 	complete := flag.Int("complete", 0, "Item to be completed")
 	del := flag.Int("delete", 0, "Item to be deleted")
 	flag.Parse()
@@ -32,9 +33,12 @@ func main() {
 	}
 
 	switch {
-
 	case *list:
-		fmt.Print(l)
+		if *verbose {
+			printTasksVerbose(*l)
+		} else {
+			printTasks(*l)
+		}
 
 	case *complete > 0:
 		if err := l.Complete(*complete); err != nil {
@@ -78,7 +82,7 @@ func main() {
 		}
 
 		fmt.Printf("%v was deleted.\n", taskName)
-		fmt.Println(l)
+		printTasks(*l)
 
 	default:
 		fmt.Fprintln(os.Stderr, "Invalid option")
@@ -103,4 +107,44 @@ func getTask(r io.Reader, args ...string) (string, error) {
 	}
 
 	return s.Text(), nil
+}
+
+// printTasks displays the to-do list in a user-friendly way.
+func printTasks(l todo.List) {
+	if len(l) == 0 {
+		fmt.Println("No tasks found.")
+		return
+	}
+
+	for i, item := range l {
+		status := " "
+		if item.Done {
+			status = "X"
+		}
+		fmt.Printf("%s %d: %s\n", status, i+1, item.Task)
+	}
+}
+
+// printTasksVerbose displays the to-do list in verbose mode
+func printTasksVerbose(l todo.List) {
+	if len(l) == 0 {
+		fmt.Println("No tasks found.")
+		return
+	}
+
+	for i, item := range l {
+		status := " "
+		if item.Done {
+			status = "X"
+		}
+
+		date := item.CreatedAt.Format("Mon 02/01")
+		hrMin := item.CreatedAt.Format("15:04")
+		if !item.CompletedAt.IsZero() {
+			date = item.CompletedAt.Format("Mon 02/01")
+			hrMin = item.CompletedAt.Format("15:04")
+		}
+
+		fmt.Printf("%s %d: %s %s %s\n", status, i+1, date, hrMin, item.Task)
+	}
 }
