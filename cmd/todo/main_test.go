@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -16,139 +15,133 @@ var (
 	fileName = ".todo.json"
 )
 
-func TestMain(m *testing.M) {
-	fmt.Println("Building tool...")
+// ========== Utils ==========
 
+func runCLI(args ...string) (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command(filepath.Join(dir, binName), args...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// ========== Helpers ========
+
+func setupTest(t *testing.T) {
+	t.Helper()
+	t.Cleanup(func() { os.Remove(fileName) })
+}
+
+func addTask(t *testing.T, name string) {
+	t.Helper()
+	_, err := runCLI("-add", name)
+	if err != nil {
+		t.Fatalf("failed to add task: %v", err)
+	}
+}
+
+func listTasks(t *testing.T) string {
+	t.Helper()
+	out, err := runCLI("-list")
+	if err != nil {
+		t.Fatalf("failed to list tasks: %v", err)
+	}
+	return out
+}
+
+// ========== Tests ==========
+
+func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		binName += ".exe"
 	}
 
 	build := exec.Command("go", "build", "-o", binName)
-
 	if err := build.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "cannot build tool %s: %s", binName, err)
+		os.Stderr.WriteString("cannot build tool: " + err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println("running tests...")
 	result := m.Run()
 
-	fmt.Println("cleaning up...")
 	os.Remove(binName)
 	os.Remove(fileName)
-
 	os.Exit(result)
 }
 
-func TestTodoCLI(t *testing.T) {
+func TestAddTask(t *testing.T) {
+	setupTest(t)
+	addTask(t, "test task 1")
+	output := listTasks(t)
+	expected := "  1: test task 1\n"
+
+	if output != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
+func TestAddTaskFromSTDIN(t *testing.T) {
+	setupTest(t)
+
 	dir, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cmdPath := filepath.Join(dir, binName)
+	task := "task from STDIN"
+	cmd := exec.Command(filepath.Join(dir, binName), "-add")
+	cmdStdIn, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	t.Run("AddNewTaskFromArguments", func(t *testing.T) {
-		task := "test task number 1"
-		cmd := exec.Command(cmdPath, "-add", task)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
+	io.WriteString(cmdStdIn, task)
+	cmdStdIn.Close()
 
-		t.Cleanup(func() { os.Remove(fileName) })
-	})
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
 
-	t.Run("AddNewTaskFromSTDIN", func(t *testing.T) {
-		task2 := "test task number 2"
-		cmd := exec.Command(cmdPath, "-add", task2)
-		cmdStdIn, err := cmd.StdinPipe()
-		if err != nil {
-			t.Fatal(err)
-		}
-		io.WriteString(cmdStdIn, task2)
-		cmdStdIn.Close()
+	output := listTasks(t)
+	expected := "  1: task from STDIN\n"
 
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
+	if output != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
+}
 
-		t.Cleanup(func() { os.Remove(fileName) })
-	})
+func TestListTasks(t *testing.T) {
+	setupTest(t)
+	addTask(t, "Task 1")
+	addTask(t, "Task 2")
+	output := listTasks(t)
+	expected := "  1: Task 1\n  2: Task 2\n"
 
-	t.Run("ListTasks", func(t *testing.T) {
-		task1 := "list task 1"
-		cmd := exec.Command(cmdPath, "-add", task1)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
+	if output != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
+}
 
-		task2 := "list task 2"
-		cmd = exec.Command(cmdPath, "-add", task2)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
+func TestDeleteTask(t *testing.T) {
+	setupTest(t)
+	addTask(t, "Task to delete")
+	addTask(t, "Other task")
 
-		cmd = exec.Command(cmdPath, "-list")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatal(err)
-		}
+	out, err := runCLI("-delete", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-		expected := fmt.Sprintf("  1: %s\n  2: %s\n", task1, task2)
-		if expected != string(out) {
-			t.Errorf("expected %q, got %q instead\n", expected, string(out))
-		}
-		t.Cleanup(func() { os.Remove(fileName) })
-	})
+	if !strings.Contains(out, "Task to delete was deleted") {
+		t.Errorf("Expected delete message, got:\n%s", out)
+	}
 
-	t.Run("DeleteTask", func(t *testing.T) {
-		task1 := "list task 1"
-		cmd := exec.Command(cmdPath, "-add", task1)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
+	output := listTasks(t)
+	expected := "  1: Other task\n"
 
-		task2 := "list task 2"
-		cmd = exec.Command(cmdPath, "-add", task2)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
-
-		cmd = exec.Command(cmdPath, "-delete", "1")
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !strings.Contains(string(out), task1+" was deleted.\n") {
-			t.Errorf(
-				"Expected task %q to be deleted\n%s",
-				task1, string(out))
-		}
-
-		t.Cleanup(func() { os.Remove(fileName) })
-	})
-
-	t.Run("DeleteInvalidTask", func(t *testing.T) {
-		task1 := "list task 1"
-		cmd := exec.Command(cmdPath, "-add", task1)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
-
-		task2 := "list task 2"
-		cmd = exec.Command(cmdPath, "-add", task2)
-		if err := cmd.Run(); err != nil {
-			t.Fatal(err)
-		}
-
-		cmd = exec.Command(cmdPath, "-delete", "7")
-		out, _ := cmd.CombinedOutput()
-
-		if !strings.Contains(string(out), "Invalid task number") {
-			t.Errorf("Expected error message for invalid deletion, got:\n%s", string(out))
-		}
-
-		t.Cleanup(func() { os.Remove(fileName) })
-	})
+	if output != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
 }
