@@ -54,7 +54,7 @@ func setupTest(t *testing.T) {
 
 func addTask(t *testing.T, name string) {
 	t.Helper()
-	_, err := runCLI("-add", name)
+	_, err := runCLI("-a", name)
 	if err != nil {
 		t.Fatalf("failed to add task: %v", err)
 	}
@@ -62,7 +62,7 @@ func addTask(t *testing.T, name string) {
 
 func listTasks(t *testing.T) string {
 	t.Helper()
-	out, err := runCLI("-list")
+	out, err := runCLI("-l")
 	if err != nil {
 		t.Fatalf("failed to list tasks: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestAddTaskFromSTDIN(t *testing.T) {
 	}
 
 	task := "task from STDIN"
-	cmd := exec.Command(filepath.Join(dir, binName), "-add")
+	cmd := exec.Command(filepath.Join(dir, binName), "-a")
 	cmdStdIn, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -147,12 +147,12 @@ func TestDeleteTask(t *testing.T) {
 	addTask(t, "Task to delete")
 	addTask(t, "Other task")
 
-	out, err := runCLI("-delete", "1")
+	out, err := runCLI("-rm", "1")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(out, "Deleted Task [Task to delete]") {
+	if !strings.Contains(out, "Removed Task [Task to delete]") {
 		t.Errorf("Expected delete message, got:\n%s", out)
 	}
 

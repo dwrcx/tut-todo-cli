@@ -13,11 +13,11 @@ import (
 var todoFileName = ".todo.json"
 
 func main() {
-	add := flag.Bool("add", false, "Add task to the todo list")
-	list := flag.Bool("list", false, "List all tasks")
-	verbose := flag.Bool("v", false, "Use with -list for verbose output")
-	complete := flag.Int("complete", 0, "Item to be completed")
-	del := flag.Int("delete", 0, "Item to be deleted")
+	add := flag.Bool("a", false, "Add a new task")
+	list := flag.Bool("l", false, "List tasks")
+	verbose := flag.Bool("v", false, "Use with -l for verbose list output")
+	done := flag.Int("d", 0, "Mark task as done")
+	remove := flag.Int("rm", 0, "Remove task")
 	flag.Parse()
 
 	if os.Getenv("TODO_FILENAME") != "" {
@@ -35,14 +35,14 @@ func main() {
 			printTasks(*l)
 		}
 
-	case *complete > 0:
-		if err := validateTaskNumber(*complete, l); err != nil {
+	case *done > 0:
+		if err := validateTaskNumber(*done, l); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 
-		taskName := (*l)[*complete-1].Task
-		if err := l.Complete(*complete); err != nil {
+		taskName := (*l)[*done-1].Task
+		if err := l.Complete(*done); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -62,20 +62,20 @@ func main() {
 		saveTasks(l, todoFileName)
 		fmt.Printf("Added Task [%s]\n", t)
 
-	case *del > 0:
-		if err := validateTaskNumber(*del, l); err != nil {
+	case *remove > 0:
+		if err := validateTaskNumber(*remove, l); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 
-		taskName := (*l)[*del-1].Task
-		if err := l.Delete(*del); err != nil {
+		taskName := (*l)[*remove-1].Task
+		if err := l.Delete(*remove); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 
 		saveTasks(l, todoFileName)
-		fmt.Printf("Deleted Task [%s]\n", taskName)
+		fmt.Printf("Removed Task [%s]\n", taskName)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Invalid option. Use -h for help.\n\n")
@@ -108,14 +108,14 @@ func showHelp() {
 	fmt.Println(`Usage: todo [command] [options]
 
 Commands:
-  add      "task"   Add a new task
-  delete   <number> Delete a task
-  complete <number> Complete a task
-  list              List tasks
-  list -v           List tasks verbose
+  a    "task"    Add a new task
+  rm   <number>  Remove a task
+  d    <number>  Mark a task as done
+  l              List tasks
+  l -v           List tasks verbose
 
 Options:
-  -h, --help        Show this help message`)
+  -h, --help     Show this help message`)
 }
 
 func getTask(r io.Reader, args ...string) (string, error) {
