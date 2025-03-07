@@ -57,6 +57,25 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+// TestDeleteAll tests the DeleteAll method of the List type
+func TestDeleteAll(t *testing.T) {
+	l := todo.List{}
+	tasks := []string{
+		"New Task 1",
+		"New Task 2",
+		"New Task 3",
+	}
+	for _, v := range tasks {
+		l.Add(v)
+	}
+
+	l.DeleteAll()
+
+	if len(l) != 0 {
+		t.Errorf("Expected empty list, got %v instead", l)
+	}
+}
+
 // TestSaveGet tests the Save and Get methods of the List type
 func TestSaveGet(t *testing.T) {
 	l1 := todo.List{}

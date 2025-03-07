@@ -50,6 +50,11 @@ func (l *List) Delete(i int) error {
 	return nil
 }
 
+// DeleteAll removes all to-do items from the list
+func (l *List) DeleteAll() {
+	*l = List{}
+}
+
 // Save method encodes the List as JSON and saves it
 // using the provided file name
 func (l *List) Save(filename string) error {
