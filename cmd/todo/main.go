@@ -41,6 +41,12 @@ func main() {
 		}
 
 	case *complete > 0:
+		if *complete > len(*l) || *complete <= 0 {
+			fmt.Fprintf(os.Stderr, "Invalid task number. Select a number between 1 and %d\n\n", len(*l))
+			return
+		}
+
+		taskName := (*l)[*complete-1].Task
 		if err := l.Complete(*complete); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -51,8 +57,11 @@ func main() {
 			os.Exit(1)
 		}
 
+		fmt.Printf("Completed Task [%s]\n", taskName)
+
 	case *add:
 		t, err := getTask(os.Stdin, flag.Args()...)
+
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -64,10 +73,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		fmt.Printf("Added Task [%s]\n", t)
+
 	case *del > 0:
 		if *del > len(*l) || *del <= 0 {
-			fmt.Fprintln(os.Stderr, "Invalid task number")
-			os.Exit(1)
+			fmt.Fprintf(os.Stderr, "Invalid task number. Select a number between 1 and %d\n\n", len(*l))
+			return
 		}
 
 		taskName := (*l)[*del-1].Task
@@ -81,13 +92,26 @@ func main() {
 			os.Exit(1)
 		}
 
-		fmt.Printf("%v was deleted.\n", taskName)
-		printTasks(*l)
+		fmt.Printf("Deleted Task [%s]\n", taskName)
 
 	default:
-		fmt.Fprintln(os.Stderr, "Invalid option")
-		os.Exit(1)
+		fmt.Fprintf(os.Stderr, "Invalid option. Use -h for help.\n\n")
+		showHelp()
 	}
+}
+
+func showHelp() {
+	fmt.Println(`Usage: todo [command] [options]
+
+Commands:
+  add      "task"   Add a new task
+  delete   <number> Delete a task
+  complete <number> Complete a task
+  list              List tasks
+  list -v           List tasks verbose
+
+Options:
+  -h, --help        Show this help message`)
 }
 
 func getTask(r io.Reader, args ...string) (string, error) {

@@ -152,7 +152,7 @@ func TestDeleteTask(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(out, "Task to delete was deleted") {
+	if !strings.Contains(out, "Deleted Task [Task to delete]") {
 		t.Errorf("Expected delete message, got:\n%s", out)
 	}
 
