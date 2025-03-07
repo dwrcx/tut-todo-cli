@@ -236,6 +236,7 @@ func TestClearTasks(t *testing.T) {
 	}
 }
 
+// TestPrintTasks tests printTasks prints a correct list
 func TestPrintTasks(t *testing.T) {
 	tasks := todo.List{
 		{Task: "task A", Done: false},
@@ -245,7 +246,7 @@ func TestPrintTasks(t *testing.T) {
 	exp := "  1: task A\nX 2: task B\n"
 
 	out := captureOutput(func() {
-		printTasks(tasks)
+		printTasks(tasks, false, false)
 	})
 
 	if out != exp {
@@ -253,6 +254,25 @@ func TestPrintTasks(t *testing.T) {
 	}
 }
 
+// TestPrintTasksFiltered tests printTasks filters completed items
+func TestPrintTasksFiltered(t *testing.T) {
+	tasks := todo.List{
+		{Task: "task A", Done: false},
+		{Task: "task B", Done: true},
+	}
+
+	exp := "  1: task A\n"
+
+	out := captureOutput(func() {
+		printTasks(tasks, false, true)
+	})
+
+	if out != exp {
+		t.Errorf("expected:\n%s\ngot:\n%s", exp, out)
+	}
+}
+
+// TestPrintTasksVerbose test printTasks prints a verbose list
 func TestPrintTasksVerbose(t *testing.T) {
 	created := time.Date(2021, 2, 3, 4, 5, 0, 0, time.UTC)
 	completed := created.Add(2 * time.Hour)
@@ -270,7 +290,29 @@ func TestPrintTasksVerbose(t *testing.T) {
 	)
 
 	out := captureOutput(func() {
-		printTasksVerbose(tasks)
+		printTasks(tasks, true, false)
+	})
+
+	if out != exp {
+		t.Errorf("expected:\n%s\ngot:\n%s", exp, out)
+	}
+}
+
+// TestPrintTasksVerboseFiltered tests printTasks prints a verbose list
+// while also filtering completed items
+func TestPrintTasksVerboseFiltered(t *testing.T) {
+	created := time.Date(2021, 2, 3, 4, 5, 0, 0, time.UTC)
+	completed := created.Add(2 * time.Hour)
+
+	tasks := todo.List{
+		{Task: "task A", Done: false, CreatedAt: created},
+		{Task: "task B", Done: true, CreatedAt: created, CompletedAt: completed},
+	}
+
+	exp := fmt.Sprintf("  1: %s %s task A\n", created.Format("Mon 02/01"), created.Format("15:04"))
+
+	out := captureOutput(func() {
+		printTasks(tasks, true, true)
 	})
 
 	if out != exp {
