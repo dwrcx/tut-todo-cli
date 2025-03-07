@@ -35,34 +35,10 @@ func main() {
 		printTasks(*l, *verbose, *filterComplete)
 
 	case *done > 0:
-		if err := validateTaskNumber(*done, l); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-
-		taskName := (*l)[*done-1].Task
-		if err := l.Complete(*done); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
-		saveTasks(l, todoFileName)
-		fmt.Printf("Completed Task [%s]\n", taskName)
+		modifyTask(l.Complete, *done, "Completed", l)
 
 	case *undone > 0:
-		if err := validateTaskNumber(*undone, l); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-
-		taskName := (*l)[*undone-1].Task
-		if err := l.UndoComplete(*undone); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
-		saveTasks(l, todoFileName)
-		fmt.Printf("Reverted Completed Task [%s]\n", taskName)
+		modifyTask(l.UndoComplete, *undone, "Reverted", l)
 
 	case *add:
 		t, err := getTask(os.Stdin, flag.Args()...)
@@ -77,23 +53,11 @@ func main() {
 		fmt.Printf("Added Task [%s]\n", t)
 
 	case *remove > 0:
-		if err := validateTaskNumber(*remove, l); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-
-		taskName := (*l)[*remove-1].Task
-		if err := l.Delete(*remove); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
-		saveTasks(l, todoFileName)
-		fmt.Printf("Removed Task [%s]\n", taskName)
+		modifyTask(l.Delete, *remove, "Removed", l)
 
 	case *clear:
 		l.DeleteAll()
-		fmt.Printf("All tasks removed.")
+		fmt.Printf("All tasks removed.\n")
 		saveTasks(l, todoFileName)
 
 	default:
@@ -114,13 +78,6 @@ func saveTasks(l *todo.List, filename string) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-}
-
-func validateTaskNumber(n int, l *todo.List) error {
-	if n > len(*l) || n <= 0 {
-		fmt.Fprintf(os.Stderr, "Invalid task number. Select a number between 1 and %d\n\n", len(*l))
-	}
-	return nil
 }
 
 func showHelp() {
@@ -157,6 +114,23 @@ func getTask(r io.Reader, args ...string) (string, error) {
 	}
 
 	return s.Text(), nil
+}
+
+func modifyTask(action func(int) error, idx int, actionLabel string, l *todo.List) {
+	if idx > len(*l) || idx <= 0 {
+		fmt.Fprintf(os.Stderr,
+			"Invalid task number. Enter a task number between 1 and %d\n", len(*l))
+		return
+	}
+
+	taskName := (*l)[idx-1].Task
+	if err := action(idx); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	saveTasks(l, todoFileName)
+	fmt.Printf("%s Task [%s]\n", actionLabel, taskName)
 }
 
 func printTasks(l todo.List, verbose bool, filterComplete bool) {
