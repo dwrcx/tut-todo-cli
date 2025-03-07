@@ -25,12 +25,7 @@ func main() {
 	}
 
 	l := &todo.List{}
-
-	// Read the to-do items from file
-	if err := l.Get(todoFileName); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	loadTasks(l, todoFileName)
 
 	switch {
 	case *list:
@@ -41,8 +36,8 @@ func main() {
 		}
 
 	case *complete > 0:
-		if *complete > len(*l) || *complete <= 0 {
-			fmt.Fprintf(os.Stderr, "Invalid task number. Select a number between 1 and %d\n\n", len(*l))
+		if err := validateTaskNumber(*complete, l); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 
@@ -52,11 +47,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := l.Save(todoFileName); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
+		saveTasks(l, todoFileName)
 		fmt.Printf("Completed Task [%s]\n", taskName)
 
 	case *add:
@@ -68,16 +59,12 @@ func main() {
 		}
 		l.Add(t)
 
-		if err := l.Save(todoFileName); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
+		saveTasks(l, todoFileName)
 		fmt.Printf("Added Task [%s]\n", t)
 
 	case *del > 0:
-		if *del > len(*l) || *del <= 0 {
-			fmt.Fprintf(os.Stderr, "Invalid task number. Select a number between 1 and %d\n\n", len(*l))
+		if err := validateTaskNumber(*del, l); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			return
 		}
 
@@ -87,17 +74,34 @@ func main() {
 			os.Exit(1)
 		}
 
-		if err := l.Save(todoFileName); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
+		saveTasks(l, todoFileName)
 		fmt.Printf("Deleted Task [%s]\n", taskName)
 
 	default:
 		fmt.Fprintf(os.Stderr, "Invalid option. Use -h for help.\n\n")
 		showHelp()
 	}
+}
+
+func loadTasks(l *todo.List, filename string) {
+	if err := l.Get(filename); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func saveTasks(l *todo.List, filename string) {
+	if err := l.Save(filename); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func validateTaskNumber(n int, l *todo.List) error {
+	if n > len(*l) || n <= 0 {
+		fmt.Fprintf(os.Stderr, "Invalid task number. Select a number between 1 and %d\n\n", len(*l))
+	}
+	return nil
 }
 
 func showHelp() {
