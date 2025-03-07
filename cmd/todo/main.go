@@ -18,6 +18,7 @@ func main() {
 	verbose := flag.Bool("v", false, "Use with -l for verbose list output")
 	done := flag.Int("d", 0, "Mark task as done")
 	remove := flag.Int("rm", 0, "Remove task")
+	clear := flag.Bool("clear", false, "Remove all tasks")
 	flag.Parse()
 
 	if os.Getenv("TODO_FILENAME") != "" {
@@ -77,6 +78,11 @@ func main() {
 		saveTasks(l, todoFileName)
 		fmt.Printf("Removed Task [%s]\n", taskName)
 
+	case *clear:
+		l.DeleteAll()
+		fmt.Printf("All tasks removed.")
+		saveTasks(l, todoFileName)
+
 	default:
 		fmt.Fprintf(os.Stderr, "Invalid option. Use -h for help.\n\n")
 		showHelp()
@@ -108,14 +114,15 @@ func showHelp() {
 	fmt.Println(`Usage: todo [command] [options]
 
 Commands:
-  a    "task"    Add a new task
-  rm   <number>  Remove a task
-  d    <number>  Mark a task as done
-  l              List tasks
-  l -v           List tasks verbose
+  a     "task"    Add a new task
+  rm    <number>  Remove a task
+  clear           Remove all tasks
+  d     <number>  Mark a task as done
+  l               List tasks
+  l -v            List tasks verbose
 
 Options:
-  -h, --help     Show this help message`)
+  -h, --help      Show this help message`)
 }
 
 func getTask(r io.Reader, args ...string) (string, error) {

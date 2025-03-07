@@ -164,6 +164,29 @@ func TestDeleteTask(t *testing.T) {
 	}
 }
 
+func TestClearTasks(t *testing.T) {
+	setupTest(t)
+	addTask(t, "task A")
+	addTask(t, "task B")
+	addTask(t, "task C")
+	addTask(t, "task D")
+
+	out, err := runCLI("-clear")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(out, "All tasks removed") {
+		t.Errorf("Expected 'All tasks removed' got:\n%s", out)
+	}
+
+	output := listTasks(t)
+	expected := "No tasks found.\n"
+	if output != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
 func TestPrintTasks(t *testing.T) {
 	tasks := todo.List{
 		{Task: "task A", Done: false},
