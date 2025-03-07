@@ -40,6 +40,17 @@ func (l *List) Complete(i int) error {
 	return nil
 }
 
+// UndoComplete method marks a completed to-do item as not Done
+func (l *List) UndoComplete(i int) error {
+	ls := *l
+	if i <= 0 || i > len(ls) {
+		return fmt.Errorf("item %d does not exist", i)
+	}
+	ls[i-1].Done = false
+	ls[i-1].CompletedAt = time.Time{}
+	return nil
+}
+
 // Delete method deletes a to-do item from the list
 func (l *List) Delete(i int) error {
 	ls := *l

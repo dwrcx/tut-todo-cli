@@ -34,6 +34,22 @@ func TestComplete(t *testing.T) {
 	}
 }
 
+// TestUndoComplete tests the UndoComplete method of the List type
+func TestUndoComplete(t *testing.T) {
+	l := todo.List{}
+	taskName := "New Task"
+	l.Add(taskName)
+	l.Complete(1)
+	if !l[0].Done {
+		t.Errorf("New task should be completed.")
+	}
+
+	l.UndoComplete(1)
+	if l[0].Done {
+		t.Errorf("New task should not be completed.")
+	}
+}
+
 // TestDelete tests the Delete method of the List type
 func TestDelete(t *testing.T) {
 	l := todo.List{}
