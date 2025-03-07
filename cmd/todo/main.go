@@ -62,40 +62,61 @@ func main() {
 	}
 
 	l := &todo.List{}
-	loadTasks(l, todoFileName)
+	if err := l.Get(todoFileName); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 
 	switch {
 	case *list || *ls:
 		printTasks(*l, *verbose || *v, *filter || *f)
 
 	case *done > 0 || *d > 0:
-		modifyTask(l.Complete, getHighVal(*done, *d), "Completed", l)
-
-	case *undo > 0 || *ud > 0:
-		modifyTask(l.UndoComplete, getHighVal(*undo, *ud), "Reverted", l)
-
-	case *add || *a:
-		t, err := getTask(os.Stdin, flag.Args()...)
-
+		err := modifyTask(l.Complete, getHighVal(*done, *d), "Completed", l)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+
+	case *undo > 0 || *ud > 0:
+		err := modifyTask(l.UndoComplete, getHighVal(*undo, *ud), "Reverted", l)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+	case *add || *a:
+		t, err := getTask(os.Stdin, flag.Args()...)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
 		l.Add(t)
 
-		saveTasks(l, todoFileName)
+		if err := l.Save(todoFileName); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		fmt.Printf("Added Task [%s]\n", t)
 
 	case *remove > 0 || *rm > 0:
-		modifyTask(l.Delete, getHighVal(*remove, *rm), "Removed", l)
+		err := modifyTask(l.Delete, getHighVal(*remove, *rm), "Removed", l)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 
 	case *clear:
 		l.DeleteAll()
+		if err := l.Save(todoFileName); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		fmt.Printf("All tasks removed.\n")
-		saveTasks(l, todoFileName)
 
 	default:
-		fmt.Fprintf(os.Stderr, "Invalid option. Use -h for help.\n\n")
+		fmt.Fprintln(os.Stderr, "Invalid option. Use -h for help.")
 		flag.Usage()
 	}
 }
@@ -105,20 +126,6 @@ func getHighVal(num1, num2 int) int {
 		return num1
 	}
 	return num2
-}
-
-func loadTasks(l *todo.List, filename string) {
-	if err := l.Get(filename); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-}
-
-func saveTasks(l *todo.List, filename string) {
-	if err := l.Save(filename); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }
 
 func getTask(r io.Reader, args ...string) (string, error) {
@@ -140,21 +147,21 @@ func getTask(r io.Reader, args ...string) (string, error) {
 	return s.Text(), nil
 }
 
-func modifyTask(action func(int) error, idx int, actionLabel string, l *todo.List) {
+func modifyTask(action func(int) error, idx int, actionLabel string, l *todo.List) error {
 	if idx > len(*l) || idx <= 0 {
-		fmt.Fprintf(os.Stderr,
-			"Invalid task number. Enter a task number between 1 and %d\n", len(*l))
-		return
+		return fmt.Errorf("task number must be between 1 and %d\n", len(*l))
 	}
 
 	taskName := (*l)[idx-1].Task
 	if err := action(idx); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return fmt.Errorf("failed to modify task %d: %v", idx, err)
 	}
 
-	saveTasks(l, todoFileName)
+	if err := l.Save(todoFileName); err != nil {
+		return err
+	}
 	fmt.Printf("%s Task [%s]\n", actionLabel, taskName)
+	return nil
 }
 
 func printTasks(l todo.List, verbose bool, filterComplete bool) {
