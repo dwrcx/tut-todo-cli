@@ -17,6 +17,7 @@ func main() {
 	list := flag.Bool("l", false, "List tasks")
 	verbose := flag.Bool("v", false, "Use with -l for verbose list output")
 	done := flag.Int("d", 0, "Mark task as done")
+	undone := flag.Int("ud", 0, "Revert (undo) a completed task")
 	remove := flag.Int("rm", 0, "Remove task")
 	clear := flag.Bool("clear", false, "Remove all tasks")
 	flag.Parse()
@@ -50,6 +51,21 @@ func main() {
 
 		saveTasks(l, todoFileName)
 		fmt.Printf("Completed Task [%s]\n", taskName)
+
+	case *undone > 0:
+		if err := validateTaskNumber(*undone, l); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+
+		taskName := (*l)[*undone-1].Task
+		if err := l.UndoComplete(*undone); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+
+		saveTasks(l, todoFileName)
+		fmt.Printf("Reverted Completed Task [%s]\n", taskName)
 
 	case *add:
 		t, err := getTask(os.Stdin, flag.Args()...)
@@ -118,6 +134,7 @@ Commands:
   rm    <number>  Remove a task
   clear           Remove all tasks
   d     <number>  Mark a task as done
+  ud    <number>  Revert (undo) a completed task
   l               List tasks
   l -v            List tasks verbose
 

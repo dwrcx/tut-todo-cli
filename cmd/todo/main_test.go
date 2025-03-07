@@ -60,6 +60,22 @@ func addTask(t *testing.T, name string) {
 	}
 }
 
+func completeTask(t *testing.T, idx string) {
+	t.Helper()
+	_, err := runCLI("-d", idx)
+	if err != nil {
+		t.Fatalf("failed to complete task: %v", err)
+	}
+}
+
+func undoCompleteTask(t *testing.T, idx string) {
+	t.Helper()
+	_, err := runCLI("-ud", idx)
+	if err != nil {
+		t.Fatalf("failed to revert completed task: %v", err)
+	}
+}
+
 func listTasks(t *testing.T) string {
 	t.Helper()
 	out, err := runCLI("-l")
@@ -127,6 +143,39 @@ func TestAddTaskFromSTDIN(t *testing.T) {
 
 	if output != expected {
 		t.Errorf("Expected:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
+func TestCompleteTask(t *testing.T) {
+	setupTest(t)
+	addTask(t, "task A")
+	addTask(t, "task B")
+	completeTask(t, "1")
+	out := listTasks(t)
+	expected := "X 1: task A\n  2: task B\n"
+
+	if out != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, out)
+	}
+}
+
+func TestRevertCompletedTask(t *testing.T) {
+	setupTest(t)
+	addTask(t, "task A")
+	addTask(t, "task B")
+	completeTask(t, "1")
+
+	out := listTasks(t)
+	expected := "X 1: task A\n  2: task B\n"
+	if out != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, out)
+	}
+
+	undoCompleteTask(t, "1")
+	out = listTasks(t)
+	expected = "  1: task A\n  2: task B\n"
+	if out != expected {
+		t.Errorf("Expected:\n%s\nGot:\n%s", expected, out)
 	}
 }
 
